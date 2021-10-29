@@ -1,0 +1,6 @@
+{
+    "name": "Lint, Test, and Scan Helm Charts",
+    "description": "Lint, test, and scan Helm charts.",
+    "icon": "helm-icon-color",
+    "categories": ["Helm"]
+}

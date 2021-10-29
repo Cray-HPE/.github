@@ -1,6 +1,0 @@
-{
-    "name": "CSM - lint, test, and scan Helm charts",
-    "description": "Lints, tests, and scans Helm charts on pull requests to main and release branches.",
-    "icon": "helm-icon-color",
-    "categories": ["Helm"]
-}
