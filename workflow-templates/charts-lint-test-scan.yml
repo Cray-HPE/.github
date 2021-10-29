@@ -5,7 +5,7 @@ on:
       - $default-branch
       - release/**
   schedule:
-    - cron: "0 0 * * *"
+    - cron: $cron-daily
   workflow_dispatch:
 jobs:
   lint-test-scan:
