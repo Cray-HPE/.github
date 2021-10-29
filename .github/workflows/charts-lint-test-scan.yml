@@ -80,7 +80,7 @@ jobs:
       - name: List charts
         id: list-charts
         run: echo "::set-output name=charts::$(find kubernetes -maxdepth 1 -mindepth 1 -type d | jq -R . | jq -sc .)"
-        if: !inputs.lint-and-test
+        if: ${{ !inputs.lint-and-test }}
 
       - name: Extract images
         id: extract-images
