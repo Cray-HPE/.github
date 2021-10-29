@@ -3,6 +3,11 @@ name: Lint, test, and scan Helm charts
 on:
   workflow_call:
     inputs:
+      runs-on:
+        description: The type of machine to run the job on.
+        type: string
+        required: false
+        default: ubuntu-latest
       chart-dirs:
         description: Comma-separated list of directories that contain Helm charts
         type: string
@@ -30,7 +35,7 @@ on:
 
 jobs:
   lint-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     outputs:
       charts: ${{ steps.list-changed.outputs.charts }}
       images: ${{ steps.extract-images.outputs.images }}
@@ -95,7 +100,7 @@ jobs:
         chart: ${{ fromJSON(needs.lint-test.outputs.charts) }}
       fail-fast: false
     continue-on-error: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -127,7 +132,7 @@ jobs:
         image: ${{ fromJSON(needs.lint-test.outputs.images) }}
       fail-fast: false
     continue-on-error: true
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - name: Run Snyk to check Docker image for vulnerabilities (${{ matrix.image }})
         uses: snyk/actions/docker@master
