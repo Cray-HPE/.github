@@ -3,7 +3,7 @@ name: Lint, test, and scan Helm charts
 on:
   workflow_call:
     inputs:
-      charts-dirs:
+      chart-dirs:
         description: Comma-separated list of directories that contain Helm charts
         type: string
         required: false
