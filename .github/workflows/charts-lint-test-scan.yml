@@ -13,8 +13,8 @@ on:
         type: string
         required: false
         default: charts
-      test-charts:
-        description: Test charts by deploying on a Kubernetes-in-Docker cluster
+      lint-and-test:
+        description: Lint and test Helm charts
         type: boolean
         required: false
         default: true
@@ -34,7 +34,7 @@ on:
         required: true
 
 jobs:
-  lint-test:
+  lint-and-test:
     runs-on: ${{ inputs.runs-on }}
     outputs:
       charts: ${{ steps.list-changed.outputs.charts }}
@@ -54,31 +54,38 @@ jobs:
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.1.0
+        if: inputs.lint-and-test
 
-      - name: Run chart-testing (list-changed)
+      - name: List changed charts
         id: list-changed
         env:
           CHART_DIRS: ${{ inputs.chart-dirs }}
         run: echo "::set-output name=charts::$(ct list-changed --chart-dirs $CHART_DIRS | jq -R . | jq -sc .)"
+        if: inputs.lint-and-test
 
-      - name: Run chart-testing (lint)
+      - name: Lint charts
         env:
           CHART_DIRS: ${{ inputs.chart-dirs }}
         run: ct lint --chart-dirs $CHART_DIRS
+        if: inputs.lint-and-test
 
-      - name: Create kind cluster
+      - name: Create test Kubernetes cluster
         uses: helm/kind-action@v1.2.0
-        if: inputs.test-charts && fromJSON(steps.list-changed.outputs.charts)[0] != null
+        if: inputs.lint-and-test && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
-      - name: Run chart-testing (install)
+      - name: Deploy charts to test Kubernetes cluster
         run: ct install
-        if: inputs.test-charts
+        if: inputs.lint-and-test
+
+      - name: List charts
+        id: list-charts
+        run: echo "::set-output name=charts::$(find kubernetes -maxdepth 1 -mindepth 1 -type d | jq -R . | jq -sc .)"
+        if: !inputs.lint-and-test
 
       - name: Extract images
         id: extract-images
-        if: fromJSON(steps.list-changed.outputs.charts)[0] != null
         env:
-          CHARTS: "${{ steps.list-changed.outputs.charts }}"
+          CHARTS: "${{ inputs.lint-and-test && steps.list-changed.outputs.charts || steps.list-charts.outputs.charts }}"
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
@@ -88,16 +95,11 @@ jobs:
           echo "::set-output name=images::$(cat extracted-images.txt | jq -R . | jq -sc .)"
 
   scan-charts:
-    # Equivalent to e.g.:
-    #   ct list-changed --chart-dirs kubernetes | while read chart; do
-    #     helm template release "$chart" --dry-run --replace --dependency-update > "${chart}/k8s-manifest.yaml"
-    #     snyk iac test "${chart}/k8s-manifest.yaml"
-    #   done
-    needs: lint-test
-    if: inputs.scan-charts && fromJSON(needs.lint-test.outputs.charts)[0] != null
+    needs: lint-and-test
+    if: inputs.scan-charts && fromJSON(needs.lint-and-test.outputs.charts)[0] != null
     strategy:
       matrix:
-        chart: ${{ fromJSON(needs.lint-test.outputs.charts) }}
+        chart: ${{ fromJSON(needs.lint-and-test.outputs.charts) }}
       fail-fast: false
     continue-on-error: true
     runs-on: ${{ inputs.runs-on }}
@@ -125,11 +127,11 @@ jobs:
       #    sarif_file: snyk.sarif
 
   scan-images: # to ensure dependent images are still free of CVEs
-    needs: lint-test
-    if: inputs.scan-images && fromJSON(needs.lint-test.outputs.images)[0] != null
+    needs: lint-and-test
+    if: inputs.scan-images && fromJSON(needs.lint-and-test.outputs.images)[0] != null
     strategy:
       matrix:
-        image: ${{ fromJSON(needs.lint-test.outputs.images) }}
+        image: ${{ fromJSON(needs.lint-and-test.outputs.images) }}
       fail-fast: false
     continue-on-error: true
     runs-on: ${{ inputs.runs-on }}
