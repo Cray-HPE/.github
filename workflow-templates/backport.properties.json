@@ -1,0 +1,9 @@
+{
+    "name": "Backport Command",
+    "description": "Generate backport PRs using command-like comments",
+    "iconName": "shasta",
+    "categories": [
+        "Code review",
+        "Utilities"
+    ]
+}
