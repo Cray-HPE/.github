@@ -1,0 +1,9 @@
+{
+    "name": "License Check",
+    "description": "Check if source files have appropriate license header",
+    "iconName": "shasta",
+    "categories": [
+        "Code review",
+        "Utilities"
+    ]
+}
