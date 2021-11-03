@@ -8,16 +8,27 @@ on:
         type: string
         required: false
         default: ubuntu-latest
-      chart-dirs:
-        description: Comma-separated list of directories that contain Helm charts
-        type: string
-        required: false
-        default: charts
       lint-and-test:
         description: Lint and test Helm charts
         type: boolean
         required: false
         default: true
+      ct-flags:
+        description: Command line flags common to all `ct` subcommands
+        type: string
+        required: false
+      ct-list-changed-flags:
+        description: Additional command line flags for `ct list-changed`
+        type: string
+        required: false
+      ct-lint-flags:
+        description: Additional command line flags for `ct lint`
+        type: string
+        required: false
+      ct-install-flags:
+        description: Additional command line flags for `ct install`
+        type: string
+        required: false
       scan-charts:
         description: Template charts and scan Kubernetes resources with Snyk
         type: boolean
@@ -58,15 +69,11 @@ jobs:
 
       - name: List changed charts
         id: list-changed
-        env:
-          CHART_DIRS: ${{ inputs.chart-dirs }}
-        run: echo "::set-output name=charts::$(ct list-changed --chart-dirs $CHART_DIRS | jq -R . | jq -sc .)"
+        run: echo "::set-output name=charts::$(ct list-changed ${{ inputs.ct-flags }} ${{ inputs.ct-list-changed-flags }} | jq -R . | jq -sc .)"
         if: inputs.lint-and-test
 
       - name: Lint charts
-        env:
-          CHART_DIRS: ${{ inputs.chart-dirs }}
-        run: ct lint --chart-dirs $CHART_DIRS
+        run: ct lint ${{ inputs.ct-flags }} ${{ inputs.ct-lint-flags }}
         if: inputs.lint-and-test
 
       - name: Create test Kubernetes cluster
@@ -74,7 +81,7 @@ jobs:
         if: inputs.lint-and-test && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
       - name: Deploy charts to test Kubernetes cluster
-        run: ct install
+        run: ct install ${{ inputs.ct-flags }} ${{ inputs.ct-install-flags }}
         if: inputs.lint-and-test
 
       - name: List charts
