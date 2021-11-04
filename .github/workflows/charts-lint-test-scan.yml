@@ -18,22 +18,15 @@ on:
         type: boolean
         required: false
         default: true
-      ct-flags:
-        description: Command line flags common to all `ct` subcommands
+      ct-config:
+        description: Chart testing configuration
         type: string
         required: false
-      ct-list-changed-flags:
-        description: Additional command line flags for `ct list-changed`
+      ct-yaml:
+        description: Chart testing configuration file
         type: string
         required: false
-      ct-lint-flags:
-        description: Additional command line flags for `ct lint`
-        type: string
-        required: false
-      ct-install-flags:
-        description: Additional command line flags for `ct install`
-        type: string
-        required: false
+        default: ${{ github.workspace }}/.github/ct.yaml
       scan-charts:
         description: Template charts and scan Kubernetes resources with Snyk
         type: boolean
@@ -53,8 +46,10 @@ jobs:
   lint-and-test:
     runs-on: ${{ inputs.runs-on }}
     outputs:
-      charts: ${{ steps.list-changed.output == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}
+      charts: ${{ steps.list-changed.outcome == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}
       images: ${{ steps.extract-images.outputs.images }}
+    env:
+      CT_CONFIG: ${{ runner.temp }}/ct.yaml
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -64,6 +59,8 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v1.1
 
+      # Python is required because `ct lint` runs Yamale (https://github.com/23andMe/Yamale) and
+      # yamllint (https://github.com/adrienverge/yamllint) which require Python
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
@@ -73,39 +70,55 @@ jobs:
         uses: helm/chart-testing-action@v2.1.0
         if: inputs.lint-charts || inputs.test-charts
 
+      - name: Configure chart-testing
+        if: inputs.lint-charts || inputs.test-charts
+        env:
+          INPUTS_CT_CONFIG: ${{ inputs.ct-config }}
+          INPUTS_CT_YAML: ${{ inputs.ct-yaml }}
+        run: |
+          if [[ -f "$INPUTS_CT_YAML" ]]; then
+            yq e "$INPUTS_CT_YAML" > $CT_CONFIG
+          else
+            touch $CT_CONFIG
+          fi
+          yq eval-all --inplace -P '. as $item ireduce ({}; . * $item )' $CT_CONFIG <(echo "target-branch: $GITHUB_BASE_REF") <(echo "$INPUTS_CT_CONFIG")
+
       - name: List changed charts
         id: list-changed
-        run: echo "::set-output name=charts::$(ct list-changed ${{ inputs.ct-flags }} ${{ inputs.ct-list-changed-flags }} | jq -R . | jq -sc .)"
-        if: inputs.test-charts
+        run: echo "::set-output name=charts::$(ct list-changed | jq -R | jq -sc)"
+        if: inputs.lint-charts || inputs.test-charts
 
       - name: Lint charts
-        run: ct lint ${{ inputs.ct-flags }} ${{ inputs.ct-lint-flags }}
+        run: ct lint
         if: inputs.lint-charts
 
       - name: Create test Kubernetes cluster
         uses: helm/kind-action@v1.2.0
         if: inputs.test-charts && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
+      # TODO install common dependencies, e.g., Istio, drydock
+
       - name: Deploy charts to test Kubernetes cluster
-        run: ct install ${{ inputs.ct-flags }} ${{ inputs.ct-install-flags }}
+        run: ct install
         if: inputs.test-charts
 
       - name: List charts
         id: list-charts
-        run: echo "::set-output name=charts::$(find kubernetes -maxdepth 1 -mindepth 1 -type d | jq -R . | jq -sc .)"
+        run: echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' $CT_CONFIG | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
         if: steps.list-changed.outcome == 'skipped'
 
       - name: Extract images
         id: extract-images
         env:
-          CHARTS: "${{ steps.list-changed.output == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}"
+          CHARTS: ${{ steps.list-changed.outcome == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}
+          IMAGES: ${{ runner.temp }}/images.txt
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
             helm template release "$chart" --dry-run --replace --dependency-update | yq e -N '.. | .image? | select(.)' -
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
-          done | sort -u > extracted-images.txt
-          echo "::set-output name=images::$(cat extracted-images.txt | jq -R . | jq -sc .)"
+          done | sort -u > $IMAGES
+          echo "::set-output name=images::$(jq -R < $IMAGES | jq -sc)"
 
   scan-charts:
     needs: lint-and-test
