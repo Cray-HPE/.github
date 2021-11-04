@@ -8,7 +8,12 @@ on:
         type: string
         required: false
         default: ubuntu-latest
-      lint-and-test:
+      lint-charts:
+        description: Lint and test Helm charts
+        type: boolean
+        required: false
+        default: true
+      test-charts:
         description: Lint and test Helm charts
         type: boolean
         required: false
@@ -48,7 +53,7 @@ jobs:
   lint-and-test:
     runs-on: ${{ inputs.runs-on }}
     outputs:
-      charts: ${{ steps.list-changed.outputs.charts }}
+      charts: ${{ steps.list-changed.output == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}
       images: ${{ steps.extract-images.outputs.images }}
     steps:
       - name: Checkout
@@ -62,37 +67,38 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
+        if: inputs.lint-charts || inputs.test-charts
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.1.0
-        if: inputs.lint-and-test
+        if: inputs.lint-charts || inputs.test-charts
 
       - name: List changed charts
         id: list-changed
         run: echo "::set-output name=charts::$(ct list-changed ${{ inputs.ct-flags }} ${{ inputs.ct-list-changed-flags }} | jq -R . | jq -sc .)"
-        if: inputs.lint-and-test
+        if: inputs.test-charts
 
       - name: Lint charts
         run: ct lint ${{ inputs.ct-flags }} ${{ inputs.ct-lint-flags }}
-        if: inputs.lint-and-test
+        if: inputs.lint-charts
 
       - name: Create test Kubernetes cluster
         uses: helm/kind-action@v1.2.0
-        if: inputs.lint-and-test && fromJSON(steps.list-changed.outputs.charts)[0] != null
+        if: inputs.test-charts && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
       - name: Deploy charts to test Kubernetes cluster
         run: ct install ${{ inputs.ct-flags }} ${{ inputs.ct-install-flags }}
-        if: inputs.lint-and-test
+        if: inputs.test-charts
 
       - name: List charts
         id: list-charts
         run: echo "::set-output name=charts::$(find kubernetes -maxdepth 1 -mindepth 1 -type d | jq -R . | jq -sc .)"
-        if: ${{ !inputs.lint-and-test }}
+        if: steps.list-changed.outcome == 'skipped'
 
       - name: Extract images
         id: extract-images
         env:
-          CHARTS: "${{ inputs.lint-and-test && steps.list-changed.outputs.charts || steps.list-charts.outputs.charts }}"
+          CHARTS: "${{ steps.list-changed.output == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}"
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
