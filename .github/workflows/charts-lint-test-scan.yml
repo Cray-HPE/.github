@@ -26,7 +26,7 @@ on:
         description: Chart testing configuration file
         type: string
         required: false
-        default: ${{ github.workspace }}/.github/ct.yaml
+        default: .github/ct.yaml
       scan-charts:
         description: Template charts and scan Kubernetes resources with Snyk
         type: boolean
