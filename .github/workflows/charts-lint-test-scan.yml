@@ -49,7 +49,7 @@ jobs:
       charts: ${{ steps.list-changed.outcome == 'skipped' && steps.list-charts.outputs.charts || steps.list-changed.outputs.charts }}
       images: ${{ steps.extract-images.outputs.images }}
     env:
-      CT_CONFIG: ${{ runner.temp }}/ct.yaml
+      CT_CONFIG: ${{ inputs.ct-yaml }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -74,13 +74,8 @@ jobs:
         if: inputs.lint-charts || inputs.test-charts
         env:
           INPUTS_CT_CONFIG: ${{ inputs.ct-config }}
-          INPUTS_CT_YAML: ${{ inputs.ct-yaml }}
         run: |
-          if [[ -f "$INPUTS_CT_YAML" ]]; then
-            yq e "$INPUTS_CT_YAML" > $CT_CONFIG
-          else
-            touch $CT_CONFIG
-          fi
+          test -f "$CT_CONFIG" ]] || touch $CT_CONFIG
           yq eval-all --inplace -P '. as $item ireduce ({}; . * $item )' $CT_CONFIG <(echo "target-branch: $GITHUB_BASE_REF") <(echo "$INPUTS_CT_CONFIG")
 
       - name: List changed charts
