@@ -27,8 +27,8 @@ on:
         type: string
         required: false
         default: ct.yaml
-      setup-k8s:
-        description: Setup and initialize Kubernetes cluster before running `ct install`
+      test-setup:
+        description: Bash script that runs after test Kubernetes cluster is setup but before `ct install`
         type: string
         required: false
       scan-charts:
@@ -109,10 +109,10 @@ jobs:
         uses: helm/kind-action@v1.2.0
         if: inputs.test-charts && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
-      - name: Setup test Kubernetes cluster
+      - name: Test setup
         shell: bash
-        run: ${{ inputs.setup-k8s }}
-        if: inputs.test-charts && inputs.setup-k8s
+        run: ${{ inputs.test-setup }}
+        if: inputs.test-charts && inputs.test-setup
 
       - name: Deploy charts to test Kubernetes cluster
         run: ct install --config "$CT_CONFIG"
