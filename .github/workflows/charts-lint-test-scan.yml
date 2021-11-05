@@ -105,27 +105,37 @@ jobs:
         run: echo "::set-output name=charts::$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)"
         if: inputs.lint-charts || inputs.test-charts
 
-      - name: Lint setup
+      - name: Run pre-lint script
         shell: bash
-        run: ${{ inputs.lint-setup }}
-        if: inputs.lint-charts && inputs.lint-setup
+        run: ${{ inputs.lint-pre-script }}
+        if: inputs.lint-charts && inputs.lint-pre-script
 
       - name: Lint charts
         run: ct lint --config "$CT_CONFIG"
         if: inputs.lint-charts
 
+      - name: Run post-lint script
+        shell: bash
+        run: ${{ inputs.lint-post-script }}
+        if: inputs.lint-charts && inputs.lint-post-script
+
       - name: Create test Kubernetes cluster
         uses: helm/kind-action@v1.2.0
         if: inputs.test-charts && fromJSON(steps.list-changed.outputs.charts)[0] != null
 
-      - name: Test setup
+      - name: Run pre-test script
         shell: bash
-        run: ${{ inputs.test-setup }}
-        if: inputs.test-charts && inputs.test-setup
+        run: ${{ inputs.test-pre-script }}
+        if: inputs.test-charts && inputs.test-pre-script
 
       - name: Deploy charts to test Kubernetes cluster
         run: ct install --config "$CT_CONFIG"
         if: inputs.test-charts
+
+      - name: Run post-test script
+        shell: bash
+        run: ${{ inputs.test-post-script }}
+        if: inputs.test-charts && inputs.test-post-script
 
       - name: Find all charts (unless linting or testing)
         id: list-charts
