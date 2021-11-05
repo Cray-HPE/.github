@@ -27,8 +27,12 @@ on:
         type: string
         required: false
         default: ct.yaml
+      lint-setup:
+        description: Bash script that runs before `ct lint`
+        type: string
+        required: false
       test-setup:
-        description: Bash script that runs after test Kubernetes cluster is setup but before `ct install`
+        description: Bash script that runs before `ct install`
         type: string
         required: false
       scan-charts:
@@ -100,6 +104,11 @@ jobs:
         shell: bash
         run: echo "::set-output name=charts::$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)"
         if: inputs.lint-charts || inputs.test-charts
+
+      - name: Lint setup
+        shell: bash
+        run: ${{ inputs.lint-setup }}
+        if: inputs.lint-charts && inputs.lint-setup
 
       - name: Lint charts
         run: ct lint --config "$CT_CONFIG"
