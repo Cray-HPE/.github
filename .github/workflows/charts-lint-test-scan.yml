@@ -26,7 +26,7 @@ on:
         description: Chart testing configuration file
         type: string
         required: false
-        default: .github/ct.yaml
+        default: ct.yaml
       setup-k8s:
         description: Setup and initialize Kubernetes cluster before running `ct install`
         type: string
