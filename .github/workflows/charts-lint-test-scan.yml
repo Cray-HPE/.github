@@ -99,11 +99,11 @@ jobs:
         run: |
           set -o errexit
           set -o pipefail
-          echo "::set-output name=charts::$(ct list-changed | jq -R | jq -sc)"
+          echo "::set-output name=charts::$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)"
         if: inputs.lint-charts || inputs.test-charts
 
       - name: Lint charts
-        run: ct lint
+        run: ct lint --config "$CT_CONFIG"
         if: inputs.lint-charts
 
       - name: Create test Kubernetes cluster
@@ -113,7 +113,7 @@ jobs:
       # TODO install common dependencies, e.g., Istio, drydock
 
       - name: Deploy charts to test Kubernetes cluster
-        run: ct install
+        run: ct install --config "$CT_CONFIG"
         if: inputs.test-charts
 
       - name: List charts
@@ -122,7 +122,7 @@ jobs:
         run: |
           set -o errexit
           set -o pipefail
-          echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' $CT_CONFIG | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
+          echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' "$CT_CONFIG" | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
         if: steps.list-changed.outcome == 'skipped'
 
       - name: Extract images
