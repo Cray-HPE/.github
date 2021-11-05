@@ -27,12 +27,20 @@ on:
         type: string
         required: false
         default: ct.yaml
-      lint-setup:
+      lint-pre-script:
         description: Bash script that runs before `ct lint`
         type: string
         required: false
-      test-setup:
+      lint-post-script:
+        description: Bash script that runs after `ct lint`
+        type: string
+        required: false
+      test-pre-script:
         description: Bash script that runs before `ct install`
+        type: string
+        required: false
+      test-post-script:
+        description: Bash script that runs after `ct install`
         type: string
         required: false
       scan-charts:
