@@ -83,8 +83,6 @@ jobs:
           INPUTS_CT_CONFIG: ${{ inputs.ct-config }}
         shell: bash
         run: |
-          set -o errexit
-          set -o pipefail
           if [[ ! -f "$CT_CONFIG" ]]; then
             mkdir -p "$(dirname "$CT_CONFIG")"
             touch "$CT_CONFIG"
@@ -96,10 +94,7 @@ jobs:
       - name: List changed charts
         id: list-changed
         shell: bash
-        run: |
-          set -o errexit
-          set -o pipefail
-          echo "::set-output name=charts::$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)"
+        run: echo "::set-output name=charts::$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)"
         if: inputs.lint-charts || inputs.test-charts
 
       - name: Lint charts
@@ -119,10 +114,7 @@ jobs:
       - name: List charts
         id: list-charts
         shell: bash
-        run: |
-          set -o errexit
-          set -o pipefail
-          echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' "$CT_CONFIG" | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
+        run: echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' "$CT_CONFIG" | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
         if: steps.list-changed.outcome == 'skipped'
 
       - name: Extract images
@@ -132,8 +124,6 @@ jobs:
           IMAGES: ${{ runner.temp }}/images.txt
         shell: bash
         run: |
-          set -o errexit
-          set -o pipefail
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
             helm template release "$chart" --dry-run --replace --dependency-update | yq e -N '.. | .image? | select(.)' -
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
