@@ -114,7 +114,7 @@ jobs:
       - name: List charts
         id: list-charts
         shell: bash
-        run: echo "::set-output name=charts::$(yq e '.chart-dirs? | .[]' "$CT_CONFIG" | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
+        run: echo "::set-output name=charts::$(yq e '.chart-dirs // ["charts"] | .[]' "$CT_CONFIG" | while read chartdir; do test -d $chartdir || continue; find $chartdir -name Chart.yaml -type f -maxdepth 2 -mindepth 2 -printf '%h\n'; done | jq -R | jq -sc)"
         if: steps.list-changed.outcome == 'skipped'
 
       - name: Extract images
