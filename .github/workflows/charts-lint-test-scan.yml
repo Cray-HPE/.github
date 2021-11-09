@@ -17,7 +17,7 @@ on:
         description: Lint and test Helm charts
         type: boolean
         required: false
-        default: true
+        default: false
       ct-config:
         description: Chart testing configuration
         type: string
