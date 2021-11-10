@@ -27,6 +27,11 @@ on:
         type: string
         required: false
         default: ct.yaml
+      setup-cms-meta-tools:
+        description: Setup cms-meta-tools toolkit
+        type: string
+        required: false
+        default: false
       lint-pre-script:
         description: Bash script that runs before `ct lint`
         type: string
@@ -80,6 +85,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repository: Cray-HPE/cms-meta-tools
+          ref: CASM-2670
+          path: cms_meta_tools
+        if: ${{ inputs.setup-cms-meta-tools }}
+
       - name: Set up Helm
         uses: azure/setup-helm@v1.1
 
@@ -105,7 +119,19 @@ jobs:
           fi
           yq eval-all --inplace -P '. as $item ireduce ({}; . * $item )' "$CT_CONFIG" <(echo "target-branch: $GITHUB_BASE_REF") <(echo "$INPUTS_CT_CONFIG")
           cat "$CT_CONFIG"
-        if: inputs.lint-charts || inputs.test-charts
+        if: inputs.lint-charts || inputs.test-charts || inputs.setup-cms-meta-tools
+
+      - name: Run version.py
+        shell: bash
+        run: |
+          ./cms_meta_tools/version.py > .version
+          APP_VERSION="$(cat .version)"
+          make runbuildprep
+          make lint
+          yq e '.chart-dirs // ["charts"] | .[]' "$CT_CONFIG" | while read chartdir; do
+            ./cms_meta_tools/scripts/update-chart-app-version.sh "$chartdir" "$APP_VERSION"
+          done
+        if: ${{ inputs.setup-cms-meta-tools }}
 
       - name: List changed charts
         id: list-changed
@@ -159,7 +185,9 @@ jobs:
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
-            helm template release "$chart" --dry-run --replace --dependency-update | yq e -N '.. | .image? | select(.)' -
+            chart_name="$(helm show chart "$chart" | yq e '.name' -)
+            chart_version="$(helm show chart "$chart" | yq e '.version' -)
+            helm template release "$chart" --dry-run --replace --dependency-update --set global.chart.name=${chart_name} --set global.chart.version=${chart_version} | yq e -N '.. | .image? | select(.)' -
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
           done | sort -u > $IMAGES
           echo "::set-output name=images::$(jq -R < $IMAGES | jq -sc)"
@@ -176,11 +204,55 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repository: Cray-HPE/cms-meta-tools
+          ref: CASM-2670
+          path: cms_meta_tools
+        if: ${{ inputs.setup-cms-meta-tools }}
+
       - name: Set up Helm
         uses: azure/setup-helm@v1.1
 
+      # Python is required because `ct lint` runs Yamale (https://github.com/23andMe/Yamale) and
+      # yamllint (https://github.com/adrienverge/yamllint) which require Python
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+        if: inputs.lint-charts || inputs.test-charts
+
+      - name: Configure chart-testing
+        env:
+          INPUTS_CT_CONFIG: ${{ inputs.ct-config }}
+        shell: bash
+        run: |
+          if [[ ! -f "$CT_CONFIG" ]]; then
+            mkdir -p "$(dirname "$CT_CONFIG")"
+            touch "$CT_CONFIG"
+          fi
+          yq eval-all --inplace -P '. as $item ireduce ({}; . * $item )' "$CT_CONFIG" <(echo "target-branch: $GITHUB_BASE_REF") <(echo "$INPUTS_CT_CONFIG")
+          cat "$CT_CONFIG"
+        if: inputs.lint-charts || inputs.test-charts || inputs.setup-cms-meta-tools
+
+      - name: Run version.py
+        shell: bash
+        run: |
+          ./cms_meta_tools/version.py > .version
+          APP_VERSION="$(cat .version)"
+          make runbuildprep
+          make lint
+          yq e '.chart-dirs // ["charts"] | .[]' "$CT_CONFIG" | while read chartdir; do
+            ./cms_meta_tools/scripts/update-chart-app-version.sh "$chartdir" "$APP_VERSION"
+          done
+        if: ${{ inputs.setup-cms-meta-tools }}
+
       - name: Template chart (${{ matrix.chart }})
-        run: helm template release ${{ matrix.chart }} --dry-run --replace --dependency-update > ${{ matrix.chart }}/k8s-manifest.yaml
+        run: |
+          chart_name="$(helm show chart "$chart" | yq e '.name' -)
+          chart_version="$(helm show chart "$chart" | yq e '.version' -)
+          helm template release ${{ matrix.chart }} --dry-run --replace --dependency-update --set global.chart.name=${chart_name} --set global.chart.version=${chart_version} > ${{ matrix.chart }}/k8s-manifest.yaml
 
       - name: Run Snyk to check Kubernetes resources (${{ matrix.chart }})
         uses: snyk/actions/iac@master
