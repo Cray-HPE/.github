@@ -121,7 +121,7 @@ jobs:
           cat "$CT_CONFIG"
         if: inputs.lint-charts || inputs.test-charts || inputs.setup-cms-meta-tools
 
-      - name: Run version.py
+      - name: Run cms-meta-tools
         shell: bash
         run: |
           ./cms_meta_tools/version.py > .version
@@ -185,8 +185,8 @@ jobs:
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
-            chart_name="$(helm show chart "$chart" | yq e '.name' -)
-            chart_version="$(helm show chart "$chart" | yq e '.version' -)
+            chart_name="$(helm show chart "$chart" | yq e '.name' -)"
+            chart_version="$(helm show chart "$chart" | yq e '.version' -)"
             helm template release "$chart" --dry-run --replace --dependency-update --set global.chart.name=${chart_name} --set global.chart.version=${chart_version} | yq e -N '.. | .image? | select(.)' -
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
           done | sort -u > $IMAGES
@@ -236,7 +236,7 @@ jobs:
           cat "$CT_CONFIG"
         if: inputs.lint-charts || inputs.test-charts || inputs.setup-cms-meta-tools
 
-      - name: Run version.py
+      - name: Run cms-meta-tools
         shell: bash
         run: |
           ./cms_meta_tools/version.py > .version
@@ -250,8 +250,8 @@ jobs:
 
       - name: Template chart (${{ matrix.chart }})
         run: |
-          chart_name="$(helm show chart "$chart" | yq e '.name' -)
-          chart_version="$(helm show chart "$chart" | yq e '.version' -)
+          chart_name="$(helm show chart "$chart" | yq e '.name' -)"
+          chart_version="$(helm show chart "$chart" | yq e '.version' -)"
           helm template release ${{ matrix.chart }} --dry-run --replace --dependency-update --set global.chart.name=${chart_name} --set global.chart.version=${chart_version} > ${{ matrix.chart }}/k8s-manifest.yaml
 
       - name: Run Snyk to check Kubernetes resources (${{ matrix.chart }})
