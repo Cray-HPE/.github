@@ -61,6 +61,11 @@ on:
         type: boolean
         required: false
         default: true
+      scan-images-ignore-list:
+        description: Images to ignore when scanning images with Snyk. This field is a JSON array of strings.
+        type: string
+        required: false
+        default: '[]'
       scan-image-snyk-args:
         description: Additional Snyk args when scanning images (e.g., `--severity-threshold=high`)
         type: string
@@ -221,4 +226,6 @@ jobs:
         with:
           image: ${{ matrix.image }}
           args: ${{ inputs.scan-image-snyk-args }}
+        if: ${{ !contains(fromJSON(inputs.scan-images-ignore-list), matrix.image) }}
+        
 
