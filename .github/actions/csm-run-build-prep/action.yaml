@@ -1,0 +1,103 @@
+name: CSM Run Build Prep
+description: Provides version, stable build id, and build timestamp
+inputs:
+  use-gitversion:
+    required: false
+    description: Use gitversion to determine the version based on the branch/tag/commit
+    default: true
+  gitversion-version:
+    required: false
+    description: Version of the gitversion binary to install (if use-gitversion)
+    default: '5.8.1'
+  gitversion-config:
+    required: false
+    description: Path relative to base repo of gitversion config file (if use-gitversion)
+    default: 'GitVersion.yml'
+  version-file:
+    required: false
+    description: Path relative to base repo of the version file (if not use-gitversion)
+    default: '.version'
+
+outputs:
+  version:
+    description: The computed or discovered semantic version (string)
+    value: ${{ steps.setversion.outputs.version }}
+  is-stable:
+    description: If this build will produce stable artifacts (based on version)
+    value: ${{ steps.setstable.outputs.is-stable }}
+  build-date-time:
+    description: 'A generated timestamp which can be used as metadata for multiple artifacts built in different jobs (format: %Y%m%d%H%M%S)'
+    value: ${{ steps.date.outputs.buildtimestamp }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set the build date/time
+      id: date
+      run: echo "::set-output name=buildtimestamp::$(date +'%Y%m%d%H%M%S')"
+      shell: bash
+
+    - name: Install GitVersion
+      if: ${{ inputs.use-gitversion }}
+      uses: gittools/actions/gitversion/setup@v0.9.7
+      with:
+        versionSpec: '${{ inputs.gitversion-version }}'
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get semantic version via gitversion
+      if: ${{ inputs.use-gitversion }}
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.9.7
+
+    - name: Get semantic version from file
+      if: ${{ !inputs.use-gitversion }}
+      id: fileversion
+      run: echo "::set-output name=semVer::$(cat .version)"
+      shell: bash
+
+    - name: Set version output
+      id: setversion
+      shell: bash
+      run: |
+        if ${{ inputs.use-gitversion }}; then
+          echo ::set-output name=version::$(echo '${{ steps.gitversion.outputs.semVer }}')
+        else
+          echo ::set-output name=version::$(echo '${{ steps.fileversion.outputs.semVer }}')
+        fi
+
+    - name: Set Stable Build (gitversion style)
+      id: stable-gitversion
+      if: ${{ inputs.use-gitversion }}
+      shell: bash
+      run: |
+        if ${{ steps.gitversion.outputs.preReleaseTag == '' }}; then
+          echo ::set-output name=is-stable::$(echo 'stable')
+        else
+          echo ::set-output name=is-stable::$(echo 'unstable')
+        fi
+
+    - name: Set Stable Build (fileversion style)
+      id: stable-fileversion
+      if: ${{ !inputs.use-gitversion }}
+      shell: bash
+      run: |
+        if contains(${{ steps.fileversion.outputs.semVer }}, "-"); then
+          echo ::set-output name=is-stable::$(echo 'unstable')
+        else
+          echo ::set-output name=is-stable::$(echo 'stable')
+        fi
+
+    - name: Set is-stable output
+      id: setstable
+      shell: bash
+      run: |
+        if ${{ inputs.use-gitversion }}; then
+          echo ::set-output name=is-stable::$(echo '${{ steps.stable-gitversion.outputs.is-stable }}')
+        else
+          echo ::set-output name=is-stable::$(echo '${{ steps.stable-fileversion.outputs.is-stable }}')
+        fi
+
