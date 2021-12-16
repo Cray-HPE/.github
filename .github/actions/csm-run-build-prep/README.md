@@ -22,6 +22,10 @@ CSM Run Build Prep provides:
 
 ## Usage
 
+**NOTE**: this action should be run with the `self-hosted` CSM runner. This
+runner has `gitversion` pre-installed and will greatly reduce the run time
+of the action.
+
 ```yaml
   - name: Prep build metadata and fetch version (use gitversion)
     uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
