@@ -1,6 +1,6 @@
 # CSM Run Build Prep
 
-A GitHub action to compute basic quantites for later used in workflows generating artifacts.
+A GitHub action to compute basic quantites for later use in workflows generating artifacts.
 
 CSM Run Build Prep provides:
 
@@ -24,13 +24,24 @@ CSM Run Build Prep provides:
 
 ```yaml
   - name: Prep build metadata and fetch version (use gitversion)
-    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1.0.0-csm-run-build-prep
+    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
 
   - name: Prep build metadata and fetch version (use a file in the repo)
-    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1.0.0-csm-run-build-prep
+    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
     with:
       version-file: .some-version-file.txt
 ```
+The tag can include just the major, or may include the minor and patch version
+if desired for ensuring backwards compatibility. Versions are denoted by the
+SemVer followed by the action name, e.g.
+
+```
+    v1.0.0-csm-run-build-prep
+    v1.0-csm-run-build-prep
+    v1-csm-run-build-prep
+```
+where in this case they are point to the same version.
+
 
 ## Action Inputs
 
@@ -39,15 +50,15 @@ CSM Run Build Prep provides:
 | `use-gitversion` | Use `gitversion` to determine the version based on the branch/tag | `true` |
 | `gitversion-version` | Version of the `gitversion` binary to install (if used) | `'5.8.1'`
 | `gitversion-config` | Path relative to base repo of `gitversion` config file (if used) | `GitVersion.yml` |
-| `version-file` | If not using `gitversion`, the path of the file to grab the SemVer version from` |
+| `version-file` | If not using `gitversion`, the path of the file to grab the SemVer version from` | `.version` |
 
 ## Action outputs
 
 The following outputs can be used by subsequent workflow steps.
 
 - `version` - The computed version (string)
-- `is-stable` - If this build will produce stable artifacts (based on version)
-- `build-date-time` - A generated timestamp which can be used as metadata for multiple artifacts built in different jobs (format: `%Y%m%d%H%M%S`)
+- `is-stable` - If this build will produce stable artifacts based on `version` (boolean)
+- `build-date-time` - A timestamp useful as metadata for multiple artifacts in different jobs (format: `%Y%m%d%H%M%S`)
 
 Step outputs can be accessed as in the following example.
 Note that in order to read the step outputs the action step must have an id.
@@ -55,7 +66,7 @@ Note that in order to read the step outputs the action step must have an id.
 ```yml
       - name: Prep build metdata and fetch version
         id: buildprep
-        uses: Cray-HPE/.github/.github/csm-run-build-prep@v1.0.0-csm-run-build-prep
+        uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
       - name: Check outputs
         run: |
           echo "Version - ${{ steps.buildprep.outputs.version }}"
