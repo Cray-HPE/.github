@@ -1,6 +1,7 @@
 # CSM Run Build Prep
 
-A GitHub action to compute basic quantites for later use in workflows generating artifacts.
+A GitHub action to compute basic quantites for later use in workflows generating
+artifacts.
 
 CSM Run Build Prep provides:
 
@@ -28,10 +29,10 @@ of the action.
 
 ```yaml
   - name: Prep build metadata and fetch version (use gitversion)
-    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
+    uses: Cray-HPE/.github/actions/csm-run-build-prep@v1-csm-run-build-prep
 
   - name: Prep build metadata and fetch version (use a file in the repo)
-    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
+    uses: Cray-HPE/.github/actions/csm-run-build-prep@v1-csm-run-build-prep
     with:
       version-file: .some-version-file.txt
 ```
@@ -40,11 +41,11 @@ if desired for ensuring backwards compatibility. Versions are denoted by the
 SemVer followed by the action name, e.g.
 
 ```
-    v1.0.0-csm-run-build-prep
-    v1.0-csm-run-build-prep
+    v1.1.5-csm-run-build-prep
+    v1.1-csm-run-build-prep
     v1-csm-run-build-prep
 ```
-where in this case they are point to the same version.
+where in this case they point to the same version.
 
 
 ## Action Inputs
@@ -70,7 +71,7 @@ Note that in order to read the step outputs the action step must have an id.
 ```yml
       - name: Prep build metdata and fetch version
         id: buildprep
-        uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-run-build-prep
+        uses: Cray-HPE/.github/actions/csm-run-build-prep@v1-csm-run-build-prep
       - name: Check outputs
         run: |
           echo "Version - ${{ steps.buildprep.outputs.version }}"
