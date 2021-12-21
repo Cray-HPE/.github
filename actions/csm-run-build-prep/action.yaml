@@ -42,7 +42,7 @@ outputs:
     value: ${{ steps.gitversion-extra.outputs.short-sha }}
   commits-since-last-version:
     description: The computed number of commits since the last version (string) -- gitversion only -- see CommitsSinceVersionSource at https://gitversion.net/docs/reference/variables
-    value: ${{ steps.gitversion-extra.outputs.short-sha }}
+    value: ${{ steps.gitversion-extra.outputs.commits-since-last-version }}
 
 runs:
   using: "composite"
