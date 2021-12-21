@@ -1,0 +1,64 @@
+name: CSM Sign Docker Image
+description: Sign a CSM Docker Image using cosign
+inputs:
+  cosign-version:
+    required: false
+    description: Version of cosign-release to use
+    default: 'v1.0.0'
+  cosign-gcp-project-id:
+    required: true
+    description: cosign project id in GCP
+  cosign-gcp-sa-key:
+    required: true
+    description: cosign service account key in GCP
+  cosign-key:
+    required: true
+    description: cosign key
+  registry:
+    required: false
+    default: artifactory.algol60.net
+    descriptions: Docker registry to push image signature
+  registry-username:
+    required: true
+    description: Container registry username
+  registry-password:
+    required: true
+    description: Container registry user password
+  github-sha:
+    required: true
+    description: Github commit SHA used to build the image
+  image:
+    required: true
+    description: Docker image to sign
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install cosign
+      uses: sigstore/cosign-installer@main
+      with:
+        cosign-release: ${{ inputs.cosign-version }}
+
+    - name: Set up Cloud SDK for Signing
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        project_id: ${{ inputs.cosign-gcp-project-id }}
+        service_account_key: ${{ inputs.cosign-gcp-sa-key }}
+        export_default_credentials: true
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.registry-username }}
+        password: ${{ inputs.registry-password }}
+
+    - name: Sign Image
+      run: COSIGN_KEY=$COSIGN_GCP_SA_KEY cosign sign -key $COSIGN_KEY -a GIT_HASH=$GITHUB_SHA $IMAGE
+      shell: bash
+      env:
+        COSIGN_GCP_SA_KEY: ${{ inputs.cosign-gcp-sa-key }} 
+        COSIGN_KEY: ${{ inputs.cosign-key }}
+        IMAGE: ${{ inputs.image }}
+        GITHUB_SHA: ${{ inputs.github-sha }}
+
