@@ -7,7 +7,7 @@ be any OCI-compatible artifact, including docker images.
 
 ```yaml
   - name: Sign an image in artifactory
-    uses: Cray-HPE/.github/actions/csm-sign-image@v1-csm-sign-image
+    uses: Cray-HPE/.github/actions/csm-sign-image@v2-csm-sign-image
     with:
       cosign-version: 'v1.4.1'
       cosign-gcp-project-id: ${{ secrets.COSIGN_GCP_PROJECT_ID }}
