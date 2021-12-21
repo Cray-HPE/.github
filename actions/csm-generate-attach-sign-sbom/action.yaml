@@ -1,7 +1,7 @@
 name: 'Generate, Attach, and Sign container image SBOM'
 description: |
-  Use Syft to generate a SPDX SBOM from a given container image. The SBOM artifact is attach the 
-  given container image using cosign in a registry, and cosign is used to sign the SBOM. 
+  Use Syft to generate a SPDX SBOM from a given container image. The SBOM artifact is attached to the 
+  given container image in a registry using cosign, and cosign is used to sign the SBOM. 
 inputs:
   cosign-version:
     required: false
