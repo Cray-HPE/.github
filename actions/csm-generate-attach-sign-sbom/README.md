@@ -41,7 +41,7 @@ where in this case they point to the same version.
 | `cosign-gcp-project-id` | cosign project id in GCP | N/A |
 | `cosign-gcp-sa-key` | cosign service account key in GCP | N/A |
 | `cosign-key` | cosign application key | N/A |
-| `registry` | Docker registry to push image signature | `artifactory.algol60.net` |
+| `registry` | Docker registry to push image SBOM | `artifactory.algol60.net` |
 | `registry-username` | Container registry username | N/A |
 | `registry-password` | Container registry user password | N/A |
 | `github-sha` | Github commit SHA used to build the image | N/A |

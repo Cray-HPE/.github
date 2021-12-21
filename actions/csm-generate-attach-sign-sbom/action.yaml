@@ -19,7 +19,7 @@ inputs:
   registry:
     required: false
     default: artifactory.algol60.net
-    descriptions: Registry to push image signature
+    descriptions: Registry to push image SBOM
   registry-username:
     required: true
     description: Container registry username
