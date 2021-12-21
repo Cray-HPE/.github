@@ -1,0 +1,89 @@
+name: 'Generate, Attach, and Sign container image SBOM'
+description: |
+  Use Syft to generate a SPDX SBOM from a given container image. The SBOM artifact is attached to the 
+  given container image in a registry using cosign, and cosign is used to sign the SBOM. 
+inputs:
+  cosign-version:
+    required: false
+    description: Version of cosign-release to use
+    default: 'v1.4.1'
+  cosign-gcp-project-id:
+    required: true
+    description: cosign project id in GCP
+  cosign-gcp-sa-key:
+    required: true
+    description: cosign service account key in GCP
+  cosign-key:
+    required: true
+    description: cosign key
+  registry:
+    required: false
+    default: artifactory.algol60.net
+    descriptions: Registry to push image SBOM
+  registry-username:
+    required: true
+    description: Container registry username
+  registry-password:
+    required: true
+    description: Container registry user password
+  github-sha:
+    required: true
+    description: Github commit SHA used to build the image
+  image:
+    required: true
+    description: Image to sign
+outputs:
+  sbom-location:
+    description: Location in OCI Registry where the SBOM is located
+    value: ${{ steps.sbom-location.outputs.value }}
+runs:
+  using: "composite"
+  steps:
+  - name: Install cosign
+    uses: sigstore/cosign-installer@main
+    with:
+      cosign-release: ${{ inputs.cosign-version }}
+
+  - name: Install Syft
+    id: syft
+    uses: anchore/sbom-action/download-syft@v0
+
+  - name: Set up Cloud SDK for Signing
+    uses: google-github-actions/setup-gcloud@master
+    with:
+      project_id: ${{ inputs.cosign-gcp-project-id }}
+      service_account_key: ${{ inputs.cosign-gcp-sa-key }}
+      export_default_credentials: true
+
+  - name: Login to Registry
+    uses: docker/login-action@v1
+    with:
+      registry: ${{ inputs.registry }}
+      username: ${{ inputs.registry-username }}
+      password: ${{ inputs.registry-password }}
+    
+  - name: Generate SBOM
+    shell: bash
+    env:
+      IMAGE: ${{ inputs.image }}
+    run: syft -vv packages $IMAGE --output spdx  > container_image.spdx
+
+  - name: Attach SBOM
+    env:
+      IMAGE: ${{ inputs.image }}
+    shell: bash
+    run: cosign attach sbom --sbom container_image.spdx $IMAGE
+
+  - name: Triangulate SBOM image Location
+    id: sbom-location
+    env:
+      IMAGE: ${{ inputs.image }}
+    shell: bash
+    run: echo "::set-output name=value::$(cosign triangulate --type sbom $IMAGE)"
+
+  - name: Sign SBOM
+    env:
+      COSIGN_KEY: ${{ inputs.cosign-key }}
+      SBOM_LOCATION: ${{ steps.sbom-location.outputs.value }}
+    shell: bash
+    run: cosign sign --key $COSIGN_KEY -a GIT_HASH=$GITHUB_SHA $SBOM_LOCATION
