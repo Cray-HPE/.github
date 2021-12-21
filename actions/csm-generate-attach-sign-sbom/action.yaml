@@ -86,4 +86,4 @@ runs:
       COSIGN_KEY: ${{ inputs.cosign-key }}
       SBOM_LOCATION: ${{ steps.sbom-location.outputs.value }}
     shell: bash
-    run: cosign sign --key $COSIGN_KEY $SBOM_LOCATION
+    run: cosign sign --key $COSIGN_KEY -a GIT_HASH=$GITHUB_SHA $SBOM_LOCATION
