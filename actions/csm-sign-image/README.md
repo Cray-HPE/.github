@@ -1,19 +1,20 @@
-# CSM Sign Docker Image
+# CSM Sign Image
 
-A GitHub action to sign published Docker images using cosign.
+A GitHub action to sign published OCI artifacts using cosign. The artifacts can
+be any OCI-compatible artifact, including docker images.
 
 ## Usage
 
 ```yaml
   - name: Sign an image in artifactory
-    uses: Cray-HPE/.github/.github/csm-run-build-prep@v1-csm-sign-docker-image
+    uses: Cray-HPE/.github/actions/csm-sign-image@v1-csm-sign-image
     with:
-      cosign-version: 'v1.0.0'
+      cosign-version: 'v1.4.1'
       cosign-gcp-project-id: ${{ secrets.COSIGN_GCP_PROJECT_ID }}
       cosign-gcp-sa-key: ${{ secrets.COSIGN_GCP_SA_KEY }}
       cosign-key: ${{ secrets.COSIGN_KEY }}
       registry: artifactory.algol60.net
-      registry-username: github-actions-cray-hpe
+      registry-username: ${{ secrets.ARTIFACTORY_ALGOL60_USERNAME }}
       registry-password: ${{ secrets.ARTIFACTORY_ALGOL60_TOKEN }}
       github-sha: ${{ env.GITHUB_SHA }}
       image: artifactory.algol60.net/csm-docker/stable/image:tag
@@ -24,17 +25,17 @@ version if desired for ensuring backwards compatibility. Versions are denoted
 by the SemVer followed by the action name, e.g.
 
 ```
-    v1.0.0-csm-sign-docker-image
-    v1.0-csm-sign-docker-image
-    v1-csm-sign-docker-image
+    v1.1.4-csm-sign-image
+    v1.1-csm-sign-image
+    v1-csm-sign-image
 ```
-where in this case they are point to the same version.
+where in this case they point to the same version.
 
 ## Action Inputs
 
 | Name | Description | Default |
 | --- | --- | --- |
-| `cosign-version` |Version of cosign-release to use | `v1.0.0` |
+| `cosign-version` |Version of cosign-release to use | `v1.4.1` |
 | `cosign-gcp-project-id` | cosign project id in GCP | N/A |
 | `cosign-gcp-sa-key` | cosign service account key in GCP | N/A |
 | `cosign-key` | cosign application key | N/A |
@@ -42,7 +43,7 @@ where in this case they are point to the same version.
 | `registry-username` | Container registry username | N/A |
 | `registry-password` | Container registry user password | N/A |
 | `github-sha` | Github commit SHA used to build the image | N/A |
-| `image` | Docker image to sign | N/A |
+| `image` | OCI-compliant image to sign | N/A |
 
 ## Action outputs
 
