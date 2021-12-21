@@ -23,11 +23,26 @@ outputs:
     description: The computed or discovered semantic version (string)
     value: ${{ steps.setversion.outputs.version }}
   is-stable:
-    description: If this build will produce stable artifacts (based on version)
+    description: If this build will produce stable artifacts (based on version), 'stable' or 'unstable'
     value: ${{ steps.setstable.outputs.is-stable }}
   build-date-time:
     description: 'A generated timestamp which can be used as metadata for multiple artifacts built in different jobs (format: %Y%m%d%H%M%S)'
     value: ${{ steps.date.outputs.buildtimestamp }}
+  major:
+    description: The computed major version (string) -- gitversion only
+    value: ${{ steps.gitversion-extra.outputs.major }}
+  minor:
+    description: The computed minor version (string) -- gitversion only
+    value: ${{ steps.gitversion-extra.outputs.minor }}
+  patch:
+    description: The computed patch version (string) -- gitversion only
+    value: ${{ steps.gitversion-extra.outputs.patch }}
+  short-sha:
+    description: The computed short commit SHA (length=7) (string) -- gitversion only
+    value: ${{ steps.gitversion-extra.outputs.short-sha }}
+  commits-since-last-version:
+    description: The computed number of commits since the last version (string) -- gitversion only -- see CommitsSinceVersionSource at https://gitversion.net/docs/reference/variables
+    value: ${{ steps.gitversion-extra.outputs.short-sha }}
 
 runs:
   using: "composite"
@@ -52,6 +67,17 @@ runs:
       if: ${{ inputs.use-gitversion }}
       id: gitversion
       uses: gittools/actions/gitversion/execute@v0.9.7
+
+    - name: Set a portion of regularly used GitVersion variables
+      if: ${{ inputs.use-gitversion }}
+      id: gitversion-extra
+      shell: bash
+      run: |
+        echo ::set-output name=major::$(echo '${{ steps.gitversion.outputs.Major }}')
+        echo ::set-output name=minor::$(echo '${{ steps.gitversion.outputs.Minor }}')
+        echo ::set-output name=patch::$(echo '${{ steps.gitversion.outputs.Patch }}')
+        echo ::set-output name=short-sha::$(echo '${{ steps.gitversion.outputs.ShortSha }}')
+        echo ::set-output name=commits-since-last-version::$(echo '${{ steps.gitversion.outputs.CommitsSinceVersionSource }}')
 
     - name: Get semantic version from file
       if: ${{ !inputs.use-gitversion }}

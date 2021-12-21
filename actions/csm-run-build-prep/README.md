@@ -15,11 +15,11 @@ CSM Run Build Prep provides:
    built at the same time. For instance, if building a Docker image and Helm
    chart in a single workflow, the build timestamp can be used in both of their
    build metadata to get consistent version strings on the artifacts:
-
 ```
       csm-example-docker-image:1.2.3+20210728032600
       csm-example-helm-chart-1.2.3+20210728032600.tgz
 ```
+4. The Git "short" SHA (7 character prefix of the full Git SHA).
 
 ## Usage
 
@@ -61,9 +61,11 @@ where in this case they point to the same version.
 
 The following outputs can be used by subsequent workflow steps.
 
-- `version` - The computed version (string)
-- `is-stable` - If this build will produce stable artifacts based on `version` (boolean)
-- `build-date-time` - A timestamp useful as metadata for multiple artifacts in different jobs (format: `%Y%m%d%H%M%S`)
+| Name | Description | Example |
+| --- | --- | --- |
+| `version` | The computed semantic version (string) | `'1.2.4-beta.1'` |
+| `is-stable` | If this build will produce stable artifacts based on `version` | `'stable'` or `'unstable'` |
+| `build-date-time` | A timestamp useful as metadata for multiple artifacts in different jobs (format: `%Y%m%d%H%M%S`) | `20210728032600` |
 
 Step outputs can be accessed as in the following example.
 Note that in order to read the step outputs the action step must have an id.
@@ -78,6 +80,17 @@ Note that in order to read the step outputs the action step must have an id.
           echo "Stable - ${{ steps.buildprep.outputs.is-stable }}"
           echo "Build Timestamp - ${{ steps.buildprep.outputs.build-date-time }}"
 ```
+
+When `use-gitversion` is true, a set of additional computed version components
+are available:
+
+| Name | Description | Example |
+| --- | --- | --- |
+| `major` | Major version (string) | `'1'` |
+| `minor` | Minor version (string) | `'2'` |
+| `patch` | Patch version (string) | `'4'` |
+| `commits-since-last-version` | `CommitsSinceVersionSource` in the [GitVersion docs](https://gitversion.net/docs/reference/variables).  | `'10'` |
+
 
 ## Action Behavior
 
