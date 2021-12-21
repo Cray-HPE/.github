@@ -70,7 +70,6 @@ runs:
 
   - name: Attach SBOM
     env:
-      COSIGN_KEY: ${{ inputs.cosign-key }}
       IMAGE: ${{ inputs.image }}
     shell: bash
     run: cosign attach sbom --sbom container_image.spdx $IMAGE
@@ -78,17 +77,13 @@ runs:
   - name: Triangulate SBOM image Location
     id: sbom-location
     env:
-      COSIGN_KEY: ${{ inputs.cosign-key }}
       IMAGE: ${{ inputs.image }}
     shell: bash
-    run: |
-      SBOM_LOCATION=$(cosign triangulate --type sbom $IMAGE)
-      echo "::set-output name=value::$SBOM_LOCATION"
+    run: echo "::set-output name=value::$(cosign triangulate --type sbom $IMAGE)"
 
   - name: Sign SBOM
     env:
       COSIGN_KEY: ${{ inputs.cosign-key }}
-      IMAGE: ${{ inputs.image }}
       SBOM_LOCATION: ${{ steps.sbom-location.outputs.value }}
     shell: bash
     run: cosign sign --key $COSIGN_KEY $SBOM_LOCATION
