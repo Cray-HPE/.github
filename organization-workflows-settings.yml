@@ -2,10 +2,10 @@ workflows_repository: .github
 include_workflows_repository: true
 exclude:
   repositories:
-  - Cray-HPE/test-shared-libraries
-  - Cray-HPE/falco
-  - Cray-HPE/ilorest
-  - Cray-HPE/metal-cloud-init
-  - Cray-HPE/metal-ipxe
-  - Cray-HPE/rekor-operator
-  - Cray-HPE/wait-for-it
+  - test-shared-libraries
+  - falco
+  - ilorest
+  - metal-cloud-init
+  - metal-ipxe
+  - rekor-operator
+  - wait-for-it
