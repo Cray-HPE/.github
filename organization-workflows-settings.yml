@@ -2,7 +2,6 @@ workflows_repository: .github
 include_workflows_repository: true
 exclude:
   repositories:
-  - test-shared-libraries
   - falco
   - ilorest
   - metal-cloud-init
