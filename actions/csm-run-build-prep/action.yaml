@@ -66,6 +66,9 @@ outputs:
   commits-since-last-version:
     description: The computed number of commits since the last version (string) -- gitversion only -- see CommitsSinceVersionSource at https://gitversion.net/docs/reference/variables
     value: ${{ steps.gitversion-extra.outputs.commits-since-last-version }}
+  pre-release-tag:
+    description: The prerelease tag computed by gitversion -- gitversion only -- see PreReleaseTag at https://gitversion.net/docs/reference/variables
+    value: ${{ steps.gitversion-extra.output.pre-release-tag }}
 
 runs:
   using: "composite"
@@ -101,6 +104,7 @@ runs:
         echo ::set-output name=patch::$(echo '${{ steps.gitversion.outputs.Patch }}')
         echo ::set-output name=short-sha::$(echo '${{ steps.gitversion.outputs.ShortSha }}')
         echo ::set-output name=commits-since-last-version::$(echo '${{ steps.gitversion.outputs.CommitsSinceVersionSource }}')
+        echo ::set-output name=pre-release-tag::$(echo '${{ steps.gitversion.outputs.PreReleaseTag }}')
 
     - name: Get semantic version from file
       if: ${{ !inputs.use-gitversion }}
