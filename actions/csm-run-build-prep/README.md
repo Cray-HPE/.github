@@ -90,6 +90,7 @@ are available:
 | `minor` | Minor version (string) | `'2'` |
 | `patch` | Patch version (string) | `'4'` |
 | `commits-since-last-version` | `CommitsSinceVersionSource` in the [GitVersion docs](https://gitversion.net/docs/reference/variables).  | `'10'` |
+| `pre-release-tag` | `PreReleaseTag` in the [GitVersion docs](https://gitversion.net/docs/reference/variables).  | `'beta.1'` |
 
 
 ## Action Behavior
