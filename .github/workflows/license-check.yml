@@ -40,20 +40,25 @@ jobs:
         name: ${{ github.workflow }} # Default: name of workflow. This name is shown with the check, but can be changed.
         documentation: https://github.com/Cray-HPE/license-checker
 
+    - name: Build List of Changed Files
+      id: build_changeset
+      run: |
+          changeset=$(echo "${{ join(github.event.client_payload.event.commits.*.added.*, ' ') }} ${{ join(github.event.client_payload.event.commits.*.modified.*, ' ') }}" | xargs)
+          if [ -z "${changeset}" ]; then
+              echo "::notice::No changed files, skipping license check"
+          fi
+          echo "::set-output name=changeset::${changeset}"
+
     - name: Checkout
+      if: ${{ steps.build_changeset.outputs.changeset }}
       uses: actions/checkout@v2
       with:
         repository: ${{ github.event.client_payload.repository.full_name }}
         ref: ${{ github.event.client_payload.sha }}
         token: ${{ github.event.client_payload.token }}
-        fetch-depth: 0
-
-    - name: Build List of Changed Files
-      id: build_changeset
-      run: |
-          echo "::set-output name=changeset::$(git diff --name-only --diff-filter=ACMRT ${{ github.event.client_payload.event.before }}..${{ github.event.client_payload.event.after }} | xargs)"
 
     - name: License Check
+      if: ${{ steps.build_changeset.outputs.changeset }}
       uses: docker://artifactory.algol60.net/csm-docker/stable/license-checker:latest
       with:
         args: ${{ steps.build_changeset.outputs.changeset }}
