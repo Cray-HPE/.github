@@ -111,7 +111,7 @@ on:
         value: ${{ jobs.build.outputs.tags }}
       labels:
         description: Generated Docker labels
-        value: ${{ jobs.build.outputs.labels
+        value: ${{ jobs.build.outputs.labels }}
       bake-file:
         description: Bake definition file
         value: ${{ jobs.build.outputs.bake-file }}
