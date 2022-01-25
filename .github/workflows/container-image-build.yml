@@ -1,0 +1,221 @@
+# MIT License
+#
+# Copyright (C) 2022 Hewlett Packard Enterprise Development LP
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# OTHER DEALINGS IN THE SOFTWARE.
+
+# This workflow requires the following job permissions:
+#     content: read
+#     id-token: write
+
+name: Build container image
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: Name of image (will prefix with registry)
+        type: string
+        required: true
+      registry:
+        description: Default image registry (will append "/stable" or "/unstable" as appropriate)
+        type: string
+        required: false
+        default: artifactory.algol60.net/csm-docker
+      labels:
+        description: List of custom labels
+        type: string
+        required: false
+      sign-with-build-key:
+        description: Sign image with GCP KMS build key
+        type: boolean
+        required: false
+        default: true
+      sign-with-oidc:
+        description: Sign image with GitHub OIDC token (experimental)
+        type: boolean
+        required: false
+        default: true
+      snyk:
+        description: Run Snyk scan for image vulnerabilities
+        type: boolean
+        required: false
+        default: true
+      snyk-args:
+        description: Additional Snyk args when scanning images (e.g., `--severity-threshold=high`)
+        type: string
+        required: false
+      upload-scan-results:
+        description: Upload scan results to GitHub Code Scanning
+        type: boolean
+        required: false
+        default: false
+
+    secrets:
+      registry-username:
+        description: Registry username
+        required: true
+      registry-password:
+        description: Registry password (or token)
+        required: true
+      snyk-token:
+        description: Snyk authorization token
+        required: true
+
+    outputs:
+      version:
+        description: Generated Docker image version
+        value: ${{ jobs.build.outputs.version }}
+      tags:
+        description: Generated Docker tags
+        value: ${{ jobs.build.outputs.tags }}
+      labels:
+        description: Generated Docker labels
+        value: ${{ jobs.build.outputs.labels
+      bake-file:
+        description: Bake definition file
+        value: ${{ jobs.build.outputs.bake-file }}
+      digest:
+        description: Image content-addressable identifier also called a digest
+        value: ${{ jobs.build.outputs.digest }}
+      metadata:
+        description: Build result metadata
+        value: ${{ jobs.build.outputs.metadata }}
+
+jobs:
+  build:
+    name: Build container image
+    runs-on: ubuntu-latest
+
+    outputs:
+      images: ${{ steps.defaults.outputs.images }}
+      version: ${{ steps.meta.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      bake-file: ${{ steps.meta.outputs.bake-file }}
+      digest: ${{ steps.build.outputs.digest }}
+      metadata: ${{ steps.build.outputs.metadata }}
+      refs: ${{ steps.image-refs.outputs.refs }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Login to Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.registry-username }}
+          password: ${{ secrets.registry-password }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@main
+
+      - name: Check cosign install
+        run: cosign version
+
+      - name: Authenticate to Google Cloud
+        if: ${{ inputs.sign-with-build-key }}
+        uses: 'google-github-actions/auth@v0'
+        with:
+          workload_identity_provider: 'projects/672506737953/locations/global/workloadIdentityPools/github-cray-hpe/providers/github'
+          service_account: 'cosign@sdlc-ops.iam.gserviceaccount.com'
+
+      - name: Set up Google Cloud SDK
+        if: ${{ inputs.sign-with-build-key }}
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: Use gcloud CLI
+        if: ${{ inputs.sign-with-build-key }}
+        run: gcloud info
+
+      - name: Set default values for workflow variables
+        id: defaults
+        env:
+          images: ${{ format('{0}/{1}/{2}', inputs.registry, startsWith(github.ref, 'refs/tags/v') && 'stable' || 'unstable', inputs.name) }}
+        run: |
+          echo "::set-output name=images::${images}"
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: ${{ steps.defaults.outputs.images }}
+          labels: |-
+            org.opencontainers.image.vendor=Hewlett Packard Enterprise Development LP
+            ${{ inputs.labels }}
+          tags: |-
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+            type=sha,format=long
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+
+      - name: Set image references
+        id: image-refs
+        shell: bash
+        env:
+          IMAGES: ${{ steps.defaults.outputs.images }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "::set-output name=refs::$(jq -R --arg digest "$DIGEST" '. + "@" + $digest' <<< "$IMAGES" | jq -sc)"
+
+      - name: Sign image with build key
+        if: ${{ inputs.sign-with-build-key }}
+        env:
+          IMAGES: ${{ join(fromJSON(steps.image-refs.outputs.refs), ' ') }}
+          KEY: 'gcpkms://projects/sdlc-ops/locations/global/keyRings/csm-builds/cryptoKeys/github-cray-hpe/versions/1'
+        run: cosign sign --key "$KEY" "$IMAGES"
+
+      - name: Sign image with GitHub OIDC Token **not production ready**
+        env:
+          IMAGES: ${{ join(fromJSON(steps.image-refs.outputs.refs), ' ') }}
+          COSIGN_EXPERIMENTAL: 1
+        run: cosign sign "$IMAGES"
+
+      - name: Snyk scan image for vulnerabilities
+        if: ${{ inputs.snyk }}
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.snyk-token }}
+        with:
+          image: ${{ fromJSON(steps.image-refs.outputs.refs)[0] }}
+          args: ${{ inputs.snyk-args }}
+
+      - name: Upload result to GitHub Code Scanning
+        if: ${{ inputs.upload-scan-results }}
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: snyk.sarif
