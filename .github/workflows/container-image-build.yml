@@ -29,10 +29,16 @@ name: Build container image
 on:
   workflow_call:
     inputs:
+      # Docker-related inputs
       name:
         description: Name of image (will prefix with registry)
         type: string
         required: true
+      stable:
+        description: Indicate if this build is stable
+        type: boolean
+        required: false
+        default: ${{ startsWith(github.ref, 'refs/tags/v') }}
       registry:
         description: Default image registry (will append "/stable" or "/unstable" as appropriate)
         type: string
@@ -42,6 +48,19 @@ on:
         description: List of custom labels
         type: string
         required: false
+      tags:
+        description: List of tags as key-value pair attributes
+        type: string
+        required: false
+        default: |-
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+
+      # Cosign-related inputs
       sign-with-build-key:
         description: Sign image with GCP KMS build key
         type: boolean
@@ -52,6 +71,8 @@ on:
         type: boolean
         required: false
         default: true
+
+      # Scan related inputs
       snyk:
         description: Run Snyk scan for image vulnerabilities
         type: boolean
@@ -76,9 +97,12 @@ on:
         required: true
       snyk-token:
         description: Snyk authorization token
-        required: true
+        required: false
 
     outputs:
+      images:
+        description: List of Docker images used as base name for tags
+        value: ${{ jobs.build.outputs.images }}
       version:
         description: Generated Docker image version
         value: ${{ jobs.build.outputs.version }}
@@ -97,6 +121,9 @@ on:
       metadata:
         description: Build result metadata
         value: ${{ jobs.build.outputs.metadata }}
+      refs:
+        description: Pinned image refs
+        value: ${{ jobs.build.outputs.refs }}
 
 jobs:
   build:
@@ -148,7 +175,7 @@ jobs:
       - name: Set default values for workflow variables
         id: defaults
         env:
-          images: ${{ format('{0}/{1}/{2}', inputs.registry, startsWith(github.ref, 'refs/tags/v') && 'stable' || 'unstable', inputs.name) }}
+          images: ${{ format('{0}/{1}/{2}', inputs.registry, inputs.stable && 'stable' || 'unstable', inputs.name) }}
         run: |
           echo "::set-output name=images::${images}"
 
@@ -161,13 +188,8 @@ jobs:
             org.opencontainers.image.vendor=Hewlett Packard Enterprise Development LP
             ${{ inputs.labels }}
           tags: |-
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
             type=sha,format=long
+            ${{ inputs.tags }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
