@@ -237,7 +237,7 @@ jobs:
           args: ${{ inputs.snyk-args }}
 
       - name: Upload result to GitHub Code Scanning
-        if: ${{ inputs.upload-scan-results }}
+        if: ${{ always() && inputs.upload-scan-results }}
         uses: github/codeql-action/upload-sarif@v1
         with:
           sarif_file: snyk.sarif
