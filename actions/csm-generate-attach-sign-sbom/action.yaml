@@ -72,7 +72,7 @@ runs:
     uses: anchore/sbom-action/download-syft@v0
 
   - name: Set up Cloud SDK for Signing
-    uses: google-github-actions/setup-gcloud@master
+    uses: google-github-actions/setup-gcloud@v0
     with:
       project_id: ${{ inputs.cosign-gcp-project-id }}
       service_account_key: ${{ inputs.cosign-gcp-sa-key }}
