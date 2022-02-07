@@ -2,9 +2,6 @@
 
 A GitHub action to ensure changelogs are updated on pull requests.
 
-Action is skipped if the pull request contains either of the
-`gitflow-maintenance` or `dependabot` labels.
-
 ## Usage
 
 ```yaml
@@ -46,7 +43,8 @@ None
 
 The default behavior is to fail if the `changelog-file` file has not been modified between the head and base branches.
 
-If the pull request is labeled with `gitflow-maintenance` or `dependabot`, then this check will be skipped.
+If this action should not run for a specific pull request, add those conditionals to the job that runs this
+action as a step.
 
 ## License
 

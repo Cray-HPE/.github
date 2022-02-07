@@ -31,10 +31,6 @@ inputs:
 
 runs:
   using: "composite"
-  if: "!(
-    contains(github.event.pull_request.labels.*.name, 'gitflow-maintenance') || 
-    contains(github.event.pull_request.labels.*.name, 'dependabot')
-    )"
   steps:
 
     - uses: actions/checkout@v2
