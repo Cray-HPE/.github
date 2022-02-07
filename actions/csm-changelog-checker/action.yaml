@@ -47,6 +47,7 @@ runs:
 
     - name: Ensure the changelog file has changed
       if: steps.changed-files.outputs.any_modified != 'true'
+      shell: bash
       run: |
         echo "Changelog file ${{ inputs.changelog-file }} has not been modified. Please add a changelog entry in accordance with https://keepachangelog.com"
         exit 1;
