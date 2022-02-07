@@ -1,0 +1,9 @@
+{
+    "name": "CSM Gitflow Mergeback (main)",
+    "description": "Create a pull request from main to develop after a gitflow production release",
+    "iconName": "shasta",
+    "categories": [
+        "Code review",
+        "Utilities"
+    ]
+}
