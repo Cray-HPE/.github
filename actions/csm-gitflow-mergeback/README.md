@@ -33,6 +33,8 @@ where in this case they point to the same version.
 | `source-branch` | The branch that needs to be merged back (almost always "master" or "main" | `master`
 | `pr-reviewers` | Default team or person to add as a reviewer to the pull request | `''` |
 | `automerge` | Boolean on whether to set the PR to automerge (see "Automerge Conditions" below) | `false` |
+| `app-key` | The private key of the Github App who will create the pull request | |
+| `app-id` | The app id of the Github App that will create the pull request | |
 
 ### Automerge Conditions
 

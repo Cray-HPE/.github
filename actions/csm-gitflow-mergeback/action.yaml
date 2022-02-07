@@ -40,6 +40,12 @@ inputs:
     required: false
     description: Boolean on whether to set the PR to automerge (see conditions)
     default: false
+  app-key:
+    required: true
+    description: The private key of the Github App who will create the pull request
+  app-id:
+    required: true
+    description: The app id of the Github App that will create the pull request
 
 outputs:
   pr-number:
@@ -57,8 +63,8 @@ runs:
       uses: navikt/github-app-token-generator@v1
       id: get-token
       with:
-        private-key: ${{ secrets.CSM_GITFLOW_MERGEBACK_BOT_APP_KEY }}
-        app-id: ${{ secrets.CSM_GITFLOW_MERGEBACK_BOT_APP_ID }}
+        private-key: ${{ inputs.app-key }}
+        app-id: ${{ inputs.app-id }}
 
     - uses: actions/checkout@v2
       with:
