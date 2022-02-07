@@ -73,6 +73,7 @@ runs:
 
       # https://github.com/peter-evans/create-pull-request/blob/main/docs/examples.md#keep-a-branch-up-to-date-with-another
     - name: Reset target branch
+      shell: bash
       run: |
         git fetch origin ${{ inputs.source-branch }}:${{ inputs.source-branch }}
         git reset --hard ${{ inputs.source-branch }}
