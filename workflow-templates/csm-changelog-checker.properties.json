@@ -1,0 +1,9 @@
+{
+    "name": "CSM Changelog Checker",
+    "description": "Ensure changelogs are updated on pull requests",
+    "iconName": "shasta",
+    "categories": [
+        "Code review",
+        "Utilities"
+    ]
+}
