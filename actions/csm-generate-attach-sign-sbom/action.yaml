@@ -71,12 +71,15 @@ runs:
     id: syft
     uses: anchore/sbom-action/download-syft@v0
 
-  - name: Set up Cloud SDK for Signing
-    uses: google-github-actions/setup-gcloud@v0
+  - name: Authenticate to Google Cloud
+    uses: google-github-actions/auth@v0
     with:
-      project_id: ${{ inputs.cosign-gcp-project-id }}
-      service_account_key: ${{ inputs.cosign-gcp-sa-key }}
-      export_default_credentials: true
+      workload_identity_provider: projects/672506737953/locations/global/workloadIdentityPools/github-cray-hpe/providers/github
+      service_account: cosign@sdlc-ops.iam.gserviceaccount.com
+      create_credentials_file: false
+
+  - name: Set up Cloud SDK
+    uses: google-github-actions/setup-gcloud@v0
 
   - name: Login to Registry
     uses: docker/login-action@v1
