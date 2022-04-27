@@ -24,4 +24,7 @@
 workflows_repository: .github
 include_workflows_repository: true
 exclude:
-  repositories: []
+  repositories:
+  - docs-csm
+  - csm
+
