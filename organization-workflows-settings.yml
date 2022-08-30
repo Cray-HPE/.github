@@ -27,4 +27,13 @@ exclude:
   repositories:
   - docs-csm
   - csm
+  - sat
+  - cfs-config-util
+  - sat-cfs-install
+  - docs-sat
+  - sat-install-utility
+  - sat-podman
+  - prodmgr
+  - sat-product-stream
+  - shasta-install-utility-common
 
