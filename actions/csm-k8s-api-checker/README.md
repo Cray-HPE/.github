@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for removed and deprecated api usage
-        uses: Cray-HPE/.github/actions/csm-k8s-api-checker@k8s-api-v0
+        uses: Cray-HPE/.github/actions/csm-k8s-api-checker@v0-csm-k8s-api-checker
         with:
           prerequisite: |
             helm template example/chart --generate-name --dry-run --set some-value=true > example-chart.yaml
