@@ -37,4 +37,4 @@ exclude:
   - sat-product-stream
   - shasta-install-utility-common
   - python-csm-api-client
-
+  - cray-product-catalog
