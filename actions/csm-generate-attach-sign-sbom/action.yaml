@@ -82,7 +82,7 @@ runs:
     uses: google-github-actions/setup-gcloud@v0
 
   - name: Login to Registry
-    uses: docker/login-action@v1
+    uses: docker/login-action@v2
     with:
       registry: ${{ inputs.registry }}
       username: ${{ inputs.registry-username }}
@@ -105,7 +105,7 @@ runs:
     env:
       IMAGE: ${{ inputs.image }}
     shell: bash
-    run: echo "::set-output name=value::$(cosign triangulate --type sbom $IMAGE)"
+    run: echo "value=$(cosign triangulate --type sbom $IMAGE)" >> $GITHUB_OUTPUT
 
   - name: Sign SBOM
     env:
