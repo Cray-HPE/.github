@@ -41,8 +41,25 @@ inputs:
     default: "false"
     description: "If this action should fail if deprecated apis are found i.e.: true/false"
 
-  # TODO: Future me add a target version so we can control what version of k8s
-  # we're wanting to complain about.
+  # Kubernetes release to target for tooling checks
+  #
+  # Manually chosen for now until we can get our campsite more in order.
+
+  # Quick one liner to get the latest k8s release:
+  # $ curl --location --silent https://api.github.com/repos/kubernetes/kubernetes/releases | jq -r 'sort_by(.tag_name) | .[].tag_name' | awk '!/-/' | tail -n1
+  # v1.25.3
+  latest-k8s:
+    required: false
+    default: "false"
+    description: "Whether to drive tools to report on latest current release of k8s or not i.e.: true/false"
+
+  # Quick one liner to get the latest of a specific release:
+  # $ curl --location --silent https://api.github.com/repos/kubernetes/kubernetes/releases | jq -r 'sort_by(.tag_name) | .[].tag_name' | awk '/1.22/ && !/-/' | tail -n1
+  # v1.22.15
+  specific-k8s:
+    required: false
+    default: "1.22.15"
+    description: "What k8s release to check against by default if not the latest k8s i.e.: 1.22.15"
 
   # Underdocumented options (intentional normally nobody should want to change this stuff)
   #
@@ -56,6 +73,14 @@ inputs:
     description: "tag for container image, i.e.: v5"
     default: "v5"
     required: false
+  KUBENT_IMAGE_PULL_URL:
+    description: "pull url for container image, i.e.: ghcr.io/doitintl/kube-no-trouble"
+    default: "ghcr.io/doitintl/kube-no-trouble"
+    required: false
+  KUBENT_IMAGE_TAG:
+    description: "tag for container image, i.e.: 0.6.0"
+    default: "0.6.0"
+    required: false
   HELM_IMAGE_PULL_URL:
     description: "pull url for container image, i.e.: alpine/helm"
     default: "alpine/helm"
@@ -66,14 +91,49 @@ inputs:
     required: false
 runs:
   using: "composite"
-    # if: ${{ fromJSON(inputs.enable-pr-comment) && github.event_name == 'pull_request' }}
-    # needs:
-    #   - scan-only
   steps:
       - name: Checkout repo
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: Install helm from image uri
+        shell: bash
+        run: |
+          set -x
+          podman pull ${{ inputs.HELM_IMAGE_PULL_URL }}:${{ inputs.HELM_IMAGE_TAG }}
+          podman cp $(podman create --rm ${{ inputs.HELM_IMAGE_PULL_URL }}:${{ inputs.HELM_IMAGE_TAG }}):/usr/bin/helm /usr/local/bin/helm
+
+          helm version
+
+      - name: Install pluto from image uri
+        shell: bash
+        run: |
+          set -x
+          podman pull ${{ inputs.PLUTO_IMAGE_PULL_URL }}:${{ inputs.PLUTO_IMAGE_TAG }}
+          podman cp $(podman create --rm ${{ inputs.PLUTO_IMAGE_PULL_URL }}:${{ inputs.PLUTO_IMAGE_TAG }}):/pluto /usr/local/bin/pluto
+
+          pluto version
+
+      - name: Install kubent from image uri
+        shell: bash
+        run: |
+          set -x
+          podman pull ${{ inputs.KUBENT_IMAGE_PULL_URL }}:${{ inputs.KUBENT_IMAGE_TAG }}
+          podman cp $(podman create --rm ${{ inputs.KUBENT_IMAGE_PULL_URL }}:${{ inputs.KUBENT_IMAGE_TAG }}):/app/kubent /usr/local/bin/kubent
+
+          kubent --version
+
+      - name: Run user prerequisite steps
+        shell: bash
+        run: |
+          set -x
+          ${{ inputs.prerequisite }}
+
+      # - name: Get/Set k8s version to run against if any
+      #   shell: bash
+      #   run: |
+      #     set -x
 
       # WHY MUST "modern" CLIS BE SO BROKEN?
       # Using the custom switch you can specify columns but your custom order is
@@ -87,16 +147,6 @@ runs:
         shell: bash
         run: |
           set -x
-          podman pull ${{ inputs.HELM_IMAGE_PULL_URL }}:${{ inputs.HELM_IMAGE_TAG }}
-          podman cp $(podman create --rm ${{ inputs.HELM_IMAGE_PULL_URL }}:${{ inputs.HELM_IMAGE_TAG }}):/usr/bin/helm /usr/local/bin/helm
-
-          helm version
-          podman pull ${{ inputs.PLUTO_IMAGE_PULL_URL }}:${{ inputs.PLUTO_IMAGE_TAG }}
-          podman cp $(podman create --rm ${{ inputs.PLUTO_IMAGE_PULL_URL }}:${{ inputs.PLUTO_IMAGE_TAG }}):/pluto /usr/local/bin/pluto
-
-          pluto version
-
-          ${{ inputs.prerequisite }}
 
           complain=false
 
@@ -130,6 +180,55 @@ runs:
 
           printf "complain=%s\n" "${complain}" >> $GITHUB_ENV
 
+      - name: kubent
+        shell: bash
+        run: |
+          set -x
+
+          ${{ inputs.prerequisite }}
+
+          # If pluto complained but we don't in the run complain retain the
+          # complaining.
+          . $GITHUB_ENV
+          complain=${complain:-false}
+          kubent=false
+
+          for file in $(find . \( -name "*.yaml" -o -name "*.yml" \) -type f); do
+            found="$(kubent --filename ${file} --output json --cluster=false)"
+            if [ "[]" != "${found}" ]; then
+              complain=true
+              kubent=true
+              printf "\nIn file %s:\n" "${file}" >> kubentoutput
+              printf "%s\n" "${found}" >> kubentoutput
+
+              printf "\nIn file %s:\n" "${file}" >> kubentmd
+              echo "${found}" | {
+                  printf "|NAME|NAMESPACE|KIND|VERSION|REPLACEMENT|DEPRECATED IN|RULESET|\n" | awk '1; NR==1{gsub(/[^|]/,"-"); print;}'; jq -r '. | sort_by(.RuleSet) | .[] | [.Name, .Namespace, .Kind, .ApiVersion, .ReplaceWith, .Since, .RuleSet] | @tsv' | tr '\t' '|' | sed 's/.*/|&|/'
+              } >> kubentmd
+            fi
+          done
+
+          cat <<EOF | tee -a comment.txt
+
+          Deprecated or removed api's detected, reference upstream documentation for full details on specific api changes:
+          https://kubernetes.io/docs/reference/using-api/deprecation-guide/#v1-22
+
+          The kubent tool, https://github.com/doitintl/kube-no-trouble found the following issues:
+
+          $(cat kubentmd)
+
+          <details>
+            <summary>kubent --file ... --output json --cluster=false</summary>
+
+          \`\`\`text
+          $(cat kubentoutput)
+          \`\`\`
+
+          </details>
+          EOF
+
+          printf "kubent=%s\n" "${kubent}" >> $GITHUB_ENV
+
       - name: Create or update comment if something to complain about
         if: inputs.enable-pr-comment == 'true' && env.complain == 'true'
         uses: marocchino/sticky-pull-request-comment@v2
@@ -159,4 +258,13 @@ runs:
           # The actual run to determine if things are yea/nay the above is all
           # lies for filling out the comment with data on what is/n't ok. This
           # is here just to exit non 0.
-          pluto detect-files ${args-} > /dev/null 2>&1
+          pluto detect-files ${args-} > /dev/null 2>&
+
+          # Duplicated for laziness, but if kubent found anything its removed so
+          # its fatal unless we ignore removed.
+          #
+          # If for some reason we didn't get the env set, just presume it failed
+          # somehow and fail the action run as if it had found removed apis
+          if [ ${{ inputs.fail-on-removed }} ] && ${kubent:-true}; then
+            return 1
+          fi
