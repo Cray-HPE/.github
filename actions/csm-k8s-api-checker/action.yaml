@@ -156,7 +156,18 @@ runs:
             args="${args} --ignore-deprecations"
           fi
 
-          # The actual run to determine if things are yea/nay the above is all
-          # lies for filling out the comment with data on what is/n't ok. This
-          # is here just to exit non 0.
-          pluto detect-files ${args-} > /dev/null 2>&1
+          rc=0
+
+          if "$(awk '!/NAME/ {!seen[$4]++} END { for (x in seen) { print x } }' plutooutput)" = "true"; then
+            if ${{ inputs.fail-on-deprecated }}; then
+              rc=$((rc+1))
+            fi
+          fi
+
+          if "$(awk '!/NAME/ {!seen[$5]++} END { for (x in seen) { print x } }' plutooutput | grep true)" = "true"; then
+            if ${{ inputs.fail-on-removed }}; then
+              rc=$((rc+1))
+            fi
+          fi
+
+          exit ${rc}
