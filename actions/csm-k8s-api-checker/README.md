@@ -65,6 +65,7 @@ Note all are optional, but realistically prerequisite needs to be set per repo.
 | `enable-pr-comment` | Comment in pr or not | true |
 | `fail-on-removed` | If a pr should fail if removed apis are found | true |
 | `fail-on-deprecated` | If a pr should fail if deprecated apis are found | false |
+| `chart-directory` | The directory under which to search for chart files | . |
 
 ## Action outputs
 
