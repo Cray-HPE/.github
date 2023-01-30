@@ -115,17 +115,27 @@ runs:
 
           if ! pluto detect-files --directory $dir $component_versions; then
             complain=true
-            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns DEPRECATED,REMOVED,NAME,KIND,VERSION,COMPONENT,'DEPRECATED IN','REMOVED IN' > lhs
-            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns REPLACEMENT > rhs
-            paste lhs rhs |
-              sed '/^[[:space:]]*$/d' |
-              sed 's/DEPRECATED IN/DEPRECATED-IN/' |
-              sed 's/REMOVED IN/REMOVED-IN/' > plutooutput
 
+            # pluto will output nothing for the REPLACEMENT column when the k8s API has been removed.
+            # This complicates things when creating a markdown table, and is why a seperate pluto
+            # call is made to get the REPLACEMENT column
+            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns NAME,KIND,VERSION,COMPONENT,'DEPRECATED IN','REMOVED IN',DEPRECATED,REMOVED > lhs
+            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns REPLACEMENT > rhs
+
+            paste lhs rhs |
+              sed -e '/^[[:space:]]*$/d' -e 's/ED IN/ED-IN/g' > plutooutput
+
+            # The headers in plutooutput are:
+            #    1    2      3        4          5            6          7         8        9
+            #   NAME KIND VERSION COMPONENT DEPRECATED-IN REMOVED-IN DEPRECATED REMOVED REPLACEMENT
             # This is a huge hack, future me fix it, past me is just sorry
             cat plutooutput |
-              awk '{print "| " $1 " | " $2 " | " $3 " | " $4 " | " $5 " | " $6 " | " $7 " | " $8 " |"}' |
+              awk '{print "| " $1 " | " $2 " | " $3 " | " $9 " |"}' |
               awk '1; NR==1{gsub(/[^|]/,"-"); print;}' > plutomd
+
+            cat plutooutput |
+              awk '{print "| " $3 " | " $4 " | " $5 " | " $6 " | " $7 " | " $8 " |"}' |
+              awk '1; NR==1{gsub(/[^|]/,"-"); print;}' > plutomd-details
 
             cat <<EOF > comment.txt
             Deprecated or removed api's detected, reference upstream documentation for full details on specific api changes:
@@ -134,6 +144,13 @@ runs:
             The pluto tool, https://pluto.docs.fairwinds.com/ found the following issues:
 
             $(cat plutomd)
+
+            <details>
+              <summary>API Details</summary>
+
+            $(cat plutomd-details)
+
+            </details>
 
             <details>
               <summary>pluto detect-files</summary>
