@@ -68,6 +68,10 @@ inputs:
     description: "tag for container image, i.e.: latest"
     default: "latest"
     required: false
+  PLUTO_COMPONENT_VERSIONS:
+    description: "The component versions, separated by commas, in the form that the pluto command uses. e.g. k8s=v1.21.0,cert-manager=v0.14.1"
+    default: ""
+    required: false
 runs:
   using: "composite"
     # if: ${{ fromJSON(inputs.enable-pr-comment) && github.event_name == 'pull_request' }}
@@ -103,16 +107,35 @@ runs:
           ${{ inputs.prerequisite }}
 
           dir=${{ inputs.chart-directory }}
+
+          # The following converts "k8s=v1.21.0,cert-manager=v0.14.1" to "--target-versions k8s=v1.21.0 --target-versions cert-manager=v0.14.1 "
+          component_versions=$(echo ${{ inputs.PLUTO_COMPONENT_VERSIONS }} | awk -v RS=',' '{if($1!=""){printf "--target-versions %s ", $1}}' )
+
           complain=false
 
-          if [ "$(pluto detect-files --ignore-deprecations --ignore-removals --directory $dir 2>&1)" != "There were no resources found with known deprecated apiVersions." ]; then
+          if ! pluto detect-files --directory $dir $component_versions; then
             complain=true
-            pluto detect-files --output custom --columns DEPRECATED,REMOVED,NAME,KIND,VERSION --ignore-deprecations --ignore-removals --directory $dir > lhs
-            pluto detect-files --output custom --columns REPLACEMENT --ignore-deprecations --ignore-removals --directory $dir > rhs
-            paste lhs rhs | sed '/^[[:space:]]*$/d' > plutooutput
 
+            # pluto will output nothing for the REPLACEMENT column when the k8s API has been removed.
+            # This complicates things when creating a markdown table, and is why a seperate pluto
+            # call is made to get the REPLACEMENT column
+            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns NAME,KIND,VERSION,COMPONENT,'DEPRECATED IN','REMOVED IN',DEPRECATED,REMOVED > lhs
+            pluto detect-files --directory $dir $component_versions --ignore-deprecations --ignore-removals --output custom --columns REPLACEMENT > rhs
+
+            paste lhs rhs |
+              sed -e '/^[[:space:]]*$/d' -e 's/ED IN/ED-IN/g' > plutooutput
+
+            # The headers in plutooutput are:
+            #    1    2      3        4          5            6          7         8        9
+            #   NAME KIND VERSION COMPONENT DEPRECATED-IN REMOVED-IN DEPRECATED REMOVED REPLACEMENT
             # This is a huge hack, future me fix it, past me is just sorry
-            cat plutooutput | awk '{print "| " $1 " | " $2 " | " $3 " | " $4 " | " $5 " | " $6 " |"}' | awk '1; NR==1{gsub(/[^|]/,"-"); print;}' > plutomd
+            cat plutooutput |
+              awk '{print "| " $1 " | " $2 " | " $3 " | " $9 " |"}' |
+              awk '1; NR==1{gsub(/[^|]/,"-"); print;}' > plutomd
+
+            cat plutooutput |
+              awk '{print "| " $3 " | " $4 " | " $5 " | " $6 " | " $7 " | " $8 " |"}' |
+              awk '1; NR==1{gsub(/[^|]/,"-"); print;}' > plutomd-details
 
             cat <<EOF > comment.txt
             Deprecated or removed api's detected, reference upstream documentation for full details on specific api changes:
@@ -121,6 +144,13 @@ runs:
             The pluto tool, https://pluto.docs.fairwinds.com/ found the following issues:
 
             $(cat plutomd)
+
+            <details>
+              <summary>API Details</summary>
+
+            $(cat plutomd-details)
+
+            </details>
 
             <details>
               <summary>pluto detect-files</summary>
@@ -154,14 +184,19 @@ runs:
         run: |
           set -x
           args=
+
+          dir=${{ inputs.chart-directory }}
+          args="${args} --directory $dir"
+
+          component_versions=$(echo ${{ inputs.PLUTO_COMPONENT_VERSIONS }} | awk -v RS=',' '{if($1!=""){printf "--target-versions %s ", $1}}' )
+          args="${args} $component_versions"
+
           if ! ${{ inputs.fail-on-removed }}; then
             args="--ignore-removed"
           fi
           if ! ${{ inputs.fail-on-deprecated }}; then
             args="${args} --ignore-deprecations"
           fi
-          dir=${{ inputs.chart-directory }}
-          args="${args} --directory $dir"
 
           # The actual run to determine if things are yea/nay the above is all
           # lies for filling out the comment with data on what is/n't ok. This
