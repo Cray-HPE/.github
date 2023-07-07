@@ -214,6 +214,7 @@ jobs:
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
           done | sort -u > $IMAGES
           echo "images=$(jq -R < $IMAGES | jq -sc)" >> $GITHUB_OUTPUT
+        if: inputs.scan-images
 
   scan-charts:
     needs: lint-and-test
