@@ -170,7 +170,7 @@ jobs:
         if: inputs.lint-charts && inputs.lint-pre-script
 
       - name: Lint charts
-        run: ct lint ${{ runner.debug && '--debug' || '' }} --config "$CT_CONFIG" ${{ runner.debug && '--helm-extra-args="--debug"' || '' }} --helm-repo-extra-args "${{ inputs.artifactory-helm-repo-name }}=--username ${{ secrets.artifactory-username }} --password ${{ secrets.artifactory-password }}"
+        run: ct lint ${{ runner.debug && '--debug' || '' }} --config "$CT_CONFIG" ${{ runner.debug && '--helm-dependency-extra-args "--debug"' || '' }} --helm-repo-extra-args "${{ inputs.artifactory-helm-repo-name }}=--username ${{ secrets.artifactory-username }} --password ${{ secrets.artifactory-password }}"
         if: inputs.lint-charts
 
       - name: Run post-lint script
