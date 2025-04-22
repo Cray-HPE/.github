@@ -210,7 +210,7 @@ jobs:
         shell: bash
         run: |
           jq -r '.[]' <<< "$CHARTS" | while read chart; do
-            helm template release "$chart" --dry-run --replace --dependency-update | yq e -N '.. | .image? | select(.)' -
+            helm template release "$chart" --dry-run --replace --dependency-update | yq e -N 'select(.kind? != "CustomResourceDefinition" and .kind? != "ClusterPolicy") | .. | .image? | select(.)' -
             helm show chart "$chart" | yq e '.annotations."artifacthub.io/images"' - | yq e -N '.[] | .image' -
           done | sort -u > $IMAGES
           echo "images=$(jq -R < $IMAGES | jq -sc)" >> $GITHUB_OUTPUT
