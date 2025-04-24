@@ -128,7 +128,8 @@ jobs:
         uses: azure/setup-helm@v3
         with:
           # Helm version 3.14 causes freezing during depndencies download
-          version: 3.13.3
+          # However, cray-sysmgmt-health now requires Helm >= 3.14.
+          # version: 3.13.3
           token: ${{ secrets.github-token }}
 
       # Python is required because `ct lint` runs Yamale (https://github.com/23andMe/Yamale) and
