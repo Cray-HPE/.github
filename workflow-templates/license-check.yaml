@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright [2021-2022] Hewlett Packard Enterprise Development LP
+# (C) Copyright 2022-2025 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -21,25 +21,16 @@
 # ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 #
-name: license-check
+name: Check Licenses
 
 on:
-  push:
-  workflow_dispatch:
+  pull_request:
 
 jobs:
   license-check:
     runs-on: ubuntu-latest
-
-    container:
-      image: artifactory.algol60.net/csm-docker/stable/license-checker:latest
-      credentials:
-          username: ${{ secrets.ARTIFACTORY_ALGOL60_READONLY_USERNAME }}
-          password: ${{ secrets.ARTIFACTORY_ALGOL60_READONLY_TOKEN }}
+    permissions:
+      contents: read
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: License Check
-        run: /usr/local/bin/python3 /license_check/license_check.py
+      - uses: Cray-HPE/license-checker@v2
