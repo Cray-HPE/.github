@@ -29,7 +29,7 @@ inputs:
   cosign-version:
     required: false
     description: Version of cosign-release to use
-    default: 'v1.4.1'
+    default: 'v2.4.3'
   cosign-gcp-project-id:
     required: true
     description: cosign project id in GCP
