@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright [2021-2022] Hewlett Packard Enterprise Development LP
+# (C) Copyright 2021-2022,2025 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -27,7 +27,7 @@ inputs:
   cosign-version:
     required: false
     description: Version of cosign-release to use
-    default: 'v1.4.1'
+    default: 'v2.4.3'
   cosign-gcp-project-id:
     required: true
     description: cosign project id in GCP
@@ -40,7 +40,7 @@ inputs:
   registry:
     required: false
     default: artifactory.algol60.net
-    descriptions: Registry to push image signature
+    description: Registry to push image signature
   registry-username:
     required: true
     description: Container registry username
@@ -58,7 +58,7 @@ runs:
   using: "composite"
   steps:
     - name: Install cosign
-      uses: sigstore/cosign-installer@main
+      uses: sigstore/cosign-installer@v3.9.1
       with:
         cosign-release: ${{ inputs.cosign-version }}
 
@@ -79,7 +79,7 @@ runs:
         password: ${{ inputs.registry-password }}
 
     - name: Sign Image
-      run: COSIGN_KEY=$COSIGN_GCP_SA_KEY cosign sign --key $COSIGN_KEY -a GIT_HASH=$GITHUB_SHA $IMAGE
+      run: COSIGN_KEY=$COSIGN_GCP_SA_KEY cosign sign --key $COSIGN_KEY --tlog-upload=false -a GIT_HASH=$GITHUB_SHA $IMAGE
       shell: bash
       env:
         COSIGN_GCP_SA_KEY: ${{ inputs.cosign-gcp-sa-key }} 

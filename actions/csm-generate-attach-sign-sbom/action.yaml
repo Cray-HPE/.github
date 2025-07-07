@@ -1,7 +1,7 @@
 #
 # MIT License
 #
-# (C) Copyright [2021-2022] Hewlett Packard Enterprise Development LP
+# (C) Copyright 2021-2022,2025 Hewlett Packard Enterprise Development LP
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -42,7 +42,7 @@ inputs:
   registry:
     required: false
     default: artifactory.algol60.net
-    descriptions: Registry to push image SBOM
+    description: Registry to push image SBOM
   registry-username:
     required: true
     description: Container registry username
@@ -112,4 +112,4 @@ runs:
       COSIGN_KEY: ${{ inputs.cosign-key }}
       SBOM_LOCATION: ${{ steps.sbom-location.outputs.value }}
     shell: bash
-    run: cosign sign --key $COSIGN_KEY -a GIT_HASH=$GITHUB_SHA $SBOM_LOCATION
+    run: cosign sign --key $COSIGN_KEY --tlog-upload=false -a GIT_HASH=$GITHUB_SHA $SBOM_LOCATION
