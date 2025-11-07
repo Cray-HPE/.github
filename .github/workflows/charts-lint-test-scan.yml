@@ -54,6 +54,11 @@ on:
         description: Bash script that runs after the Chart testing configuration file is configured.
         type: string
         required: false
+      target-branch:
+        description: Target branch to compare changes against
+        type: string
+        required: false
+        default: main
       lint-pre-script:
         description: Bash script that runs before `ct lint`
         type: string
@@ -162,7 +167,7 @@ jobs:
       - name: List changed charts
         id: list-changed
         shell: bash
-        run: echo "charts=$(ct list-changed --config "$CT_CONFIG" | jq -R | jq -sc)" >> $GITHUB_OUTPUT
+        run: echo "charts=$(ct list-changed --config "$CT_CONFIG" --target-branch "${{ inputs.target-branch }}" | jq -R | jq -sc)" >> $GITHUB_OUTPUT
         if: inputs.lint-charts || inputs.test-charts
 
       - name: Run pre-lint script
