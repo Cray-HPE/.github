@@ -236,7 +236,7 @@ jobs:
 
       - name: Template chart (${{ matrix.chart }})
         run: |
-          for u in $(yq eval '.dependencies[].repository' kubernetes/cray-console-operator/Chart.yaml | uniq | head -1); do
+          for u in $(yq eval '.dependencies[].repository' ${{ matrix.chart }}/Chart.yaml | uniq | head -1); do
               helm repo add ${{ inputs.artifactory-helm-repo-name }} $u --username ${{ secrets.artifactory-username }} --password ${{ secrets.artifactory-password }}
           done
           helm template release ${{ matrix.chart }} --dry-run --replace --dependency-update > ${{ matrix.chart }}/k8s-manifest.yaml
